@@ -1,0 +1,10 @@
+import { getDb } from "../api/queries/connection";
+import { sql } from "drizzle-orm";
+const db = getDb();
+const r:any = await db.execute(sql`SELECT price_unit u, COUNT(*) c FROM products WHERE status='active' GROUP BY price_unit ORDER BY c DESC`);
+console.log(r[0]);
+const o:any = await db.execute(sql`SELECT COUNT(*) c FROM products WHERE old_price IS NOT NULL AND old_price > price`);
+console.log('sale:', o[0]);
+const p:any = await db.execute(sql`SELECT COUNT(*) c FROM products p WHERE status='active' AND EXISTS(SELECT 1 FROM product_images i WHERE i.product_id=p.id)`);
+console.log('with images:', p[0]);
+process.exit(0);

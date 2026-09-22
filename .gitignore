@@ -1,0 +1,34 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+db/migrations/*.sql
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Build outputs
+dist/
+build/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+node_modules
+dist
+
+# Локальные дампы и служебные скрипты
+dump.sql
+setup.sh
+setup2.sh
+
+# macOS
+.DS_Store
