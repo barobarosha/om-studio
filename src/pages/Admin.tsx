@@ -62,6 +62,7 @@ function AdminDashboard() {
     onError: (e) => setMsg(`Ошибка загрузки: ${e.message}. Проверьте ссылку и формат — источник не сохранён.`),
   });
   const removeSource = trpc.admin.sources.remove.useMutation({ onSuccess: () => sources.refetch() });
+  const leadsList = trpc.admin.leads.list.useQuery(undefined, { refetchInterval: 30000 });
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
