@@ -139,6 +139,26 @@ export const leads = mysqlTable(
   (t) => [index("leads_created_idx").on(t.createdAt)],
 );
 
+// ─── Куда дублировать заявки (настраивается в админке, для каждой формы) ─────
+export const notifyTargets = mysqlTable(
+  "notify_targets",
+  {
+    id: serial("id").primaryKey(),
+    formType: varchar("form_type", { length: 50 }).notNull(), // availability | callback | consultation | project
+    channel: varchar("channel", { length: 20 }).notNull(), // telegram | max | email
+    target: varchar("target", { length: 512 }).notNull(), // chat_id (Telegram/MAX) или e-mail
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("notify_targets_uniq").on(t.formType, t.channel, t.target)],
+);
+
+// ─── Глобальные настройки (токены ботов, SMTP) — правятся из админки ─────────
+export const appSettings = mysqlTable("app_settings", {
+  key: varchar("key", { length: 100 }).primaryKey(), // telegram_bot_token | max_bot_token | mail_from | smtp_host | smtp_port | smtp_user | smtp_pass
+  value: text("value"),
+});
+
 // ─── Журнал импортов ─────────────────────────────────────────────────────────
 export const importRuns = mysqlTable("import_runs", {
   id: serial("id").primaryKey(),

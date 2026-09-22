@@ -13,8 +13,8 @@ import {
 } from "./queries/catalog";
 import type { CatalogFilters } from "./queries/catalog";
 import { getDb } from "./queries/connection";
-import { leads } from "@db/schema";
-import { desc, eq } from "drizzle-orm";
+import { appSettings, leads, notifyTargets } from "@db/schema";
+import { and, desc, eq } from "drizzle-orm";
 import { runAllImports, runCustomSource } from "./importers/run";
 
 const filtersInput = z.object({
@@ -54,10 +54,88 @@ const leadInput = z.object({
   website: z.string().max(0).optional(), // honeypot — должен быть пустым
 });
 
-// примитивный rate-limit по IP: не чаще 1 заявки в 30 сек
+// примитивный rate-limit по IP: не чаще 1 заявки в 3 минуты
 const leadHits = new Map<string, number>();
+const LEAD_RATE_LIMIT_MS = 3 * 60_000; // 3 минуты между заявками с одного IP
 // rate-limit на подбор пароля админки: не чаще 5 попыток в 5 минут с IP
 const loginHits = new Map<string, { count: number; resetAt: number }>();
+
+// ─── Уведомления о заявках (Telegram / MAX / e-mail) ────────────────────────────────────────────────────────────────────────────────────────────
+const LEAD_TITLES: Record<string, string> = {
+  availability: "Узнать наличие",
+  callback: "Обратный звонок",
+  consultation: "Консультация",
+  project: "Проект на подбор",
+};
+
+function leadText(l: { formType: string; name: string; phone: string; productName?: string; email?: string; comment?: string; pageUrl?: string }): string {
+  const lines = [`Новая заявка: ${LEAD_TITLES[l.formType] ?? l.formType}`, `Имя: ${l.name}`, `Телефон: ${l.phone}`];
+  if (l.productName) lines.push(`Товар: ${l.productName}`);
+  if (l.email) lines.push(`E-mail: ${l.email}`);
+  if (l.comment) lines.push(`Комментарий: ${l.comment}`);
+  if (l.pageUrl) lines.push(`Страница: ${l.pageUrl}`);
+  return lines.join("\n");
+}
+
+// Отправка не блокирует сохранение заявки: ошибки только в консоль сервера
+async function notifyAboutLead(input: { formType: string; name: string; phone: string; productName?: string; email?: string; comment?: string; pageUrl?: string }) {
+  const db = getDb();
+  const targets = await db
+    .select()
+    .from(notifyTargets)
+    .where(and(eq(notifyTargets.formType, input.formType), eq(notifyTargets.active, true)));
+  if (targets.length === 0) return;
+  const settingsRows = await db.select().from(appSettings);
+  const s: Record<string, string> = {};
+  for (const r of settingsRows) s[r.key] = r.value ?? "";
+  const text = leadText(input);
+  const results = await Promise.allSettled(
+    targets.map(async (t) => {
+      if (t.channel === "telegram") {
+        if (!s.telegram_bot_token) throw new Error("telegram_bot_token не задан в админке");
+        const res = await fetch(`https://api.telegram.org/bot${s.telegram_bot_token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: t.target, text }),
+        });
+        if (!res.ok) throw new Error(`Telegram HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      } else if (t.channel === "max") {
+        if (!s.max_bot_token) throw new Error("max_bot_token не задан в админке");
+        const res = await fetch(`https://platform-api.max.ru/messages?chat_id=${encodeURIComponent(t.target)}`, {
+          method: "POST",
+          headers: { Authorization: s.max_bot_token, "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) throw new Error(`MAX HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      } else {
+        if (!s.smtp_host || !s.mail_from) throw new Error("SMTP/отправитель не заданы в админке");
+        let nodemailer: any;
+        try {
+          nodemailer = await import("nodemailer");
+        } catch {
+          throw new Error("Для отправки e-mail установите пакет: npm i nodemailer");
+        }
+        const port = Number(s.smtp_port || 465);
+        const transport = nodemailer.default.createTransport({
+          host: s.smtp_host,
+          port,
+          secure: port === 465,
+          auth: s.smtp_user ? { user: s.smtp_user, pass: s.smtp_pass } : undefined,
+        });
+        await transport.sendMail({
+          from: s.mail_from,
+          to: t.target,
+          subject: `Заявка с сайта: ${LEAD_TITLES[input.formType] ?? input.formType}`,
+          text,
+        });
+        transport.close?.();
+      }
+    }),
+  );
+  results.forEach((r, i) => {
+    if (r.status === "rejected") console.error(`[notify:${targets[i].channel} → ${targets[i].target}]`, r.reason);
+  });
+}
 
 // Пароль админки: задаётся через .env (ADMIN_PASSWORD), по умолчанию — для локальной разработки
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "omstudio2026";
@@ -97,7 +175,7 @@ export const appRouter = createRouter({
       const ip = (ctx as any)?.req?.headers?.get?.("x-forwarded-for") ?? "anon";
       const now = Date.now();
       const last = leadHits.get(String(ip)) ?? 0;
-      if (now - last < 30_000) {
+      if (now - last < LEAD_RATE_LIMIT_MS) {
         throw new Error("Слишком частые отправки. Подождите немного и попробуйте снова.");
       }
       leadHits.set(String(ip), now);
@@ -116,6 +194,7 @@ export const appRouter = createRouter({
         fileData: input.fileDataBase64 ? { base64: input.fileDataBase64 } : null,
         utm: input.utm ?? null,
       });
+      void notifyAboutLead(input).catch((e) => console.error("[leads] уведомления не отправлены:", e));
       return { ok: true, id: Number(r.insertId) };
     }),
   }),
@@ -155,6 +234,54 @@ export const appRouter = createRouter({
       checkAdmin(ctx);
       return runAllImports();
     }),
+    leads: createRouter({
+      list: publicQuery.query(({ ctx }) => {
+        checkAdmin(ctx);
+        const db = getDb();
+        return db.select().from(leads).orderBy(desc(leads.createdAt)).limit(500);
+      }),
+    }),
+
+    notify: createRouter({
+      list: publicQuery.query(async ({ ctx }) => {
+        checkAdmin(ctx);
+        const db = getDb();
+        const [targets, settingsRows] = await Promise.all([
+          db.select().from(notifyTargets).orderBy(desc(notifyTargets.createdAt)),
+          db.select().from(appSettings),
+        ]);
+        return { targets, settings: Object.fromEntries(settingsRows.map((r) => [r.key, r.value ?? ""])) };
+      }),
+      add: publicQuery
+        .input(
+          z.object({
+            formType: z.enum(["availability", "callback", "consultation", "project"]),
+            channel: z.enum(["telegram", "max", "email"]),
+            target: z.string().min(1).max(512),
+          }),
+        )
+        .mutation(async ({ input, ctx }) => {
+          checkAdmin(ctx);
+          const db = getDb();
+          await db.insert(notifyTargets).values(input).onDuplicateKeyUpdate({ set: { active: true } });
+          return { ok: true };
+        }),
+      remove: publicQuery.input(z.object({ id: z.number() })).mutation(async ({ input, ctx }) => {
+        checkAdmin(ctx);
+        const db = getDb();
+        await db.delete(notifyTargets).where(eq(notifyTargets.id, input.id));
+        return { ok: true };
+      }),
+      setSetting: publicQuery
+        .input(z.object({ key: z.string().min(1).max(100), value: z.string().max(4000) }))
+        .mutation(async ({ input, ctx }) => {
+          checkAdmin(ctx);
+          const db = getDb();
+          await db.insert(appSettings).values({ key: input.key, value: input.value }).onDuplicateKeyUpdate({ set: { value: input.value } });
+          return { ok: true };
+        }),
+    }),
+
     sources: createRouter({
       list: publicQuery.query(async ({ ctx }) => {
         checkAdmin(ctx);
