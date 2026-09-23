@@ -130,9 +130,9 @@ function AdminDashboard() {
           </button>
           <button
             onClick={() => {
-              if (confirm("Искать картинки на сайтах фабрик для товаров без фото? Процесс идёт партиями по 30 товаров и может занять несколько минут.")) {
+              if (confirm("Искать картинки на сайтах фабрик для товаров без фото? Процесс идёт партиями по 100 товаров и может занять несколько минут.")) {
                 setPhotoMsg("");
-                findPhotos.mutate({ limit: 30 });
+                findPhotos.mutate({ limit: 100 });
               }
             }}
             disabled={findPhotos.isPending}

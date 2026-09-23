@@ -201,7 +201,7 @@ export interface PhotoSearchResult {
 }
 
 /** Находит до `limit` активных товаров без фото и пытается подобрать им изображения */
-export async function findMissingPhotos(limit = 30): Promise<PhotoSearchResult> {
+export async function findMissingPhotos(limit = 100): Promise<PhotoSearchResult> {
   const db = getDb();
   const res: PhotoSearchResult = { scanned: 0, hadSourceUrl: 0, found: 0, saved: 0, failed: 0, errors: [] };
   await mkdir(UPLOAD_DIR, { recursive: true });
