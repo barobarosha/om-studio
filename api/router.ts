@@ -234,6 +234,14 @@ export const appRouter = createRouter({
       checkAdmin(ctx);
       return runAllImports();
     }),
+    // Поиск недостающих фото на сайтах фабрик (партиями, чтобы не блокировать админку)
+    findPhotos: publicQuery
+      .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+      .mutation(async ({ input, ctx }) => {
+        checkAdmin(ctx);
+        const { findMissingPhotos } = await import("./importers/photos");
+        return findMissingPhotos(input?.limit ?? 30);
+      }),
     leads: createRouter({
       list: publicQuery.query(({ ctx }) => {
         checkAdmin(ctx);

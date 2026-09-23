@@ -3,7 +3,7 @@
 import { eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "../queries/connection";
 import { brands, collections, customSources, importRuns, productImages, products, suppliers } from "@db/schema";
-import { norm, slugify, guessDesign, guessShape } from "./normalize";
+import { norm, slugify, guessDesign, guessShape, cleanText } from "./normalize";
 import type { NormalizedProduct } from "./normalize";
 import { SOURCES, loadGenericSource } from "./sources";
 import type { SourceCode } from "./sources";
@@ -134,7 +134,7 @@ export async function runImport(code: SourceCode): Promise<{ runId: number; stat
         brandId,
         collectionId,
         category: it.category,
-        description: it.description ?? null,
+        description: cleanText(it.description) ?? null,
         price: it.price !== undefined ? String(it.price) : null,
         oldPrice: it.oldPrice !== undefined ? String(it.oldPrice) : null,
         priceUnit: it.priceUnit ?? "м²",

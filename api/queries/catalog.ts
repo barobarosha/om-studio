@@ -409,10 +409,20 @@ export async function heroImages() {
 
 export async function listImportRuns() {
   const db = getDb();
-  return db.execute(sql`
+  const rows = await db.execute(sql`
     SELECT r.id, s.name AS supplier, s.code, r.started_at AS startedAt, r.finished_at AS finishedAt,
            r.status, r.total_rows AS totalRows, r.created, r.updated, r.skipped, r.deactivated, r.errors
     FROM import_runs r JOIN suppliers s ON s.id = r.supplier_id
     ORDER BY r.id DESC LIMIT 40
   `).then((r: any) => r[0]);
+  // сколько активных товаров каждого поставщика сейчас без фото
+  const noImg = await db.execute(sql`
+    SELECT s.code, count(*) AS c
+    FROM products p JOIN suppliers s ON s.id = p.supplier_id
+    WHERE p.status = 'active' AND p.duplicate_of_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM product_images i WHERE i.product_id = p.id)
+    GROUP BY s.code
+  `).then((r: any) => r[0] as { code: string; c: number }[]);
+  const map = new Map(noImg.map((r) => [r.code, Number(r.c)]));
+  return rows.map((r: any) => ({ ...r, missingImages: map.get(r.code) ?? 0 }));
 }

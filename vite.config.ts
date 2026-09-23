@@ -12,6 +12,11 @@ export default defineConfig({
     inspectAttr(), react()],
     server: {
     port: 3000,
+    // Сюда вставлять ссылку туннеля при раздаче наружу (cloudflared / trycloudflare).
+    // Пример: allowedHosts: ["link-political-manga-cubic.trycloudflare.com"]
+    // Точка в начале ".trycloudflare.com" разрешает ЛЮБОЙ поддомен trycloudflare —
+    // можно не править конфиг при каждом новом туннеле.
+    allowedHosts: [".trycloudflare.com"],
   },
   resolve: {
     alias: {

@@ -49,6 +49,8 @@
 | `npm run check` | проверка типов TypeScript |
 | `npm run db:push` | синхронизация схемы БД |
 | `npx tsx db/import-cli.ts all` | ручной запуск импорта всех поставщиков |
+| `npx tsx db/find-photos-all.mts` | массовый поиск фото для товаров без картинок (партиями, с паузами) |
+| `npx tsx db/clean-descriptions.mts` | разовая чистка описаний от кракозябр («п»ї» и т.п.) |
 
 ## Настройки
 

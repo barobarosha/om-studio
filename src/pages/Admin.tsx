@@ -63,6 +63,14 @@ function AdminDashboard() {
   });
   const removeSource = trpc.admin.sources.remove.useMutation({ onSuccess: () => sources.refetch() });
   const leadsList = trpc.admin.leads.list.useQuery(undefined, { refetchInterval: 30000 });
+  const [photoMsg, setPhotoMsg] = useState("");
+  const findPhotos = trpc.admin.findPhotos.useMutation({
+    onSuccess: (r) => {
+      setPhotoMsg(`Готово: проверено ${r.scanned} товаров без фото · найдено страниц ${r.found} · сохранено изображений ${r.saved}. При необходимости нажмите ещё раз — обработается следующая партия.`);
+      runs.refetch();
+    },
+    onError: (e) => setPhotoMsg(`Ошибка поиска фото: ${e.message}`),
+  });
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -113,20 +121,34 @@ function AdminDashboard() {
         )}
       </div>
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="font-display text-xl font-semibold">Журнал импортов</h2>
-        <button onClick={() => runImport.mutate()} disabled={runImport.isPending}
-          className="h-10 px-5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">
-          {runImport.isPending ? "Импорт выполняется…" : "Запустить импорт сейчас"}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => runImport.mutate()} disabled={runImport.isPending}
+            className="h-10 px-5 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-60">
+            {runImport.isPending ? "Импорт выполняется…" : "Запустить импорт сейчас"}
+          </button>
+          <button
+            onClick={() => {
+              if (confirm("Искать картинки на сайтах фабрик для товаров без фото? Процесс идёт партиями по 30 товаров и может занять несколько минут.")) {
+                setPhotoMsg("");
+                findPhotos.mutate({ limit: 30 });
+              }
+            }}
+            disabled={findPhotos.isPending}
+            className="h-10 px-5 rounded-md border border-primary text-primary text-sm font-semibold disabled:opacity-60">
+            {findPhotos.isPending ? "Ищем картинки…" : "Найти фото без картинок"}
+          </button>
+        </div>
       </div>
+      {photoMsg && <p className="text-sm mb-4 text-muted-foreground">{photoMsg}</p>}
       <div className="overflow-x-auto border border-border rounded-lg bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted-foreground">
               <th className="p-3">Поставщик</th><th className="p-3">Старт</th><th className="p-3">Статус</th>
               <th className="p-3">Строк</th><th className="p-3">Создано</th><th className="p-3">Обновлено</th>
-              <th className="p-3">Архив</th><th className="p-3">Ошибки</th>
+              <th className="p-3">Архив</th><th className="p-3">Без картинок</th><th className="p-3">Ошибки</th>
             </tr>
           </thead>
           <tbody>
@@ -143,6 +165,7 @@ function AdminDashboard() {
                 <td className="p-3">{r.created}</td>
                 <td className="p-3">{r.updated}</td>
                 <td className="p-3">{r.deactivated}</td>
+                <td className="p-3">{r.missingImages > 0 ? <span className="text-amber-700 font-medium">{r.missingImages}</span> : "0"}</td>
                 <td className="p-3 text-xs max-w-56 truncate" title={r.errors ?? ""}>{r.errors ?? "—"}</td>
               </tr>
             ))}
@@ -301,7 +324,11 @@ function NotifySettings() {
               <button
                 disabled={!d.target.trim() || addMut.isPending}
                 onClick={() => {
-                  addMut.mutate({ formType: ft.id, channel: d.channel, target: d.target.trim() });
+                  addMut.mutate({
+                    formType: ft.id as "availability" | "callback" | "consultation" | "project",
+                    channel: d.channel as "telegram" | "max" | "email",
+                    target: d.target.trim(),
+                  });
                   setDrafts((v) => ({ ...v, [ft.id]: { ...d, target: "" } }));
                 }}
                 className="h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
