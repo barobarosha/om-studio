@@ -9,6 +9,10 @@ type App = Hono<{ Bindings: HttpBindings }>;
 export function serveStaticFiles(app: App) {
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
 
+  // Фото, скачанные парсером, лежат ВНЕ dist (сборка его очищает) — отдаём их из public/
+  const publicPath = path.resolve(import.meta.dirname, "../public");
+  app.use("/uploads/*", serveStatic({ root: publicPath }));
+
   app.use("*", serveStatic({ root: "./dist/public" }));
 
   app.notFound((c) => {
