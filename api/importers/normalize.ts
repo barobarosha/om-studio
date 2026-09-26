@@ -209,9 +209,11 @@ const DESIGN_MAP: [RegExp, string][] = [
   [/камен|камень|stone|pietra|сланец|slate|известняк|limestone|песчаник/i, "Камень"],
 ];
 
-/** Определяет дизайн по названию товара, коллекции и описанию */
+/** Определяет дизайн по названию товара и коллекции.
+ *  Описание НЕ используем: SEO-тексты поставщиков содержат слова всех дизайнов
+ *  («сочетается с деревом» у мрамора) и портят классификацию (баг п. 6). */
 export function guessDesign(name?: string, collection?: string, description?: string): string | undefined {
-  const hay = `${name ?? ""} ${collection ?? ""} ${description ?? ""}`;
+  const hay = `${name ?? ""} ${collection ?? ""}`;
   for (const [re, val] of DESIGN_MAP) if (re.test(hay)) return val;
   return undefined;
 }
