@@ -119,7 +119,12 @@ export function normalizeCountry(s?: string): string | undefined {
 }
 
 export function guessCategory(opts: {
-    // Уверенные маркеры керамогранита прямо в названии:
+  material?: string;
+  type?: string;
+  name?: string;
+  size?: string;
+}): "keramogranit" | "plitka" {
+  // Уверенные маркеры керамогранита прямо в названии:
   // поставщики часто отдают крупноформатный керамогранит с типом «плитка».
   const n0 = (opts.name ?? "").toLowerCase();
   if (/керамогранит|керамическ(ий|ого) гранит|porcelain|xlight|coverlam|mirage/.test(n0)) return "keramogranit";
@@ -133,11 +138,7 @@ export function guessCategory(opts: {
       if (a0 >= 120 && b0 >= 120) return "keramogranit";
     }
   }
-  material?: string;
-  type?: string;
-  name?: string;
-  size?: string;
-}): "keramogranit" | "plitka" {
+
   const m = `${opts.material ?? ""} ${opts.type ?? ""}`.toLowerCase();
   if (/керамогранит|керамическ(ий|ого) гранит|gres|porcelain|кг\b/.test(m)) return "keramogranit";
   if (/плитка|керамика|tile|мозаик|керамичес/.test(m)) return "plitka";
