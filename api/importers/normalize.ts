@@ -153,6 +153,33 @@ export function guessCategory(opts: {
   return "keramogranit";
 }
 
+// ─── Восстановление бренда из названия (п. 2 заказчика) ─────────────────────
+// У поставщика Тоскана в выгрузке нет поля «производитель» — бренд восстанавливаем
+// по первому слову названия. Словарь синхронизирован с db/fix-brands.mts.
+const BRAND_FROM_NAME: Record<string, string> = {
+  PORCELANOSA: "PORCELANOSA",
+  MIRAGE: "MIRAGE",
+  EQUIPE: "EQUIPE",
+  PERONDA: "PERONDA CERAMICAS",
+  GRESPANIA: "GRESPANIA",
+  HARMONY: "HARMONY",
+  MUSEUM: "MUSEUM",
+  COLORKER: "COLORKER",
+  MUTINA: "MUTINA",
+  MAYOR: "MAYOR",
+  TERZADIMENSIONE: "TERZADIMENSIONE",
+  EXAGRES: "EXAGRES",
+  LANTIC: "L'ANTIC COLONIAL",
+  BUTECH: "BUTECH",
+};
+
+/** Определяет бренд по первому слову названия (для выгрузок без поля бренда) */
+export function guessBrandFromName(name?: string): string | undefined {
+  if (!name) return undefined;
+  const first = name.trim().split(/\s+/)[0]?.toUpperCase();
+  return first ? BRAND_FROM_NAME[first] : undefined;
+}
+
 export function availabilityFromQty(qty?: number): NormalizedProduct["availabilityStatus"] {
   if (qty === undefined) return "unknown";
   if (qty <= 0) return "out_of_stock";
