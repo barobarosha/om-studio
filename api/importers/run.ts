@@ -3,7 +3,7 @@
 import { eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "../queries/connection";
 import { brands, collections, customSources, importRuns, productImages, products, suppliers } from "@db/schema";
-import { norm, slugify, guessDesign, guessShape, cleanText } from "./normalize";
+import { norm, slugify, guessDesign, guessShape, cleanText, guessBrandFromName } from "./normalize";
 import type { NormalizedProduct } from "./normalize";
 import { SOURCES, loadGenericSource } from "./sources";
 import type { SourceCode } from "./sources";
@@ -104,6 +104,9 @@ export async function runImport(code: SourceCode): Promise<{ runId: number; stat
   const errors: string[] = [];
   try {
     const items = (await SOURCES[code].loader()).filter((it) => it.externalId && it.name);
+    // П. 2: у выгрузок без поля «производитель» (Тоскана) восстанавливаем бренд
+    // по первому слову названия — до всех фаз (бренды, коллекции, привязка).
+    for (const it of items) it.brandName = it.brandName ?? guessBrandFromName(it.name);
     stats.totalRows = items.length;
     const slugTag = code;
 
