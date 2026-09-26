@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 
+// Время в БД хранится в UTC; показываем московское, чтобы журнал не путал.
+const fmtMsk = (d: string | Date | null | undefined) => {
+  if (!d) return "";
+  const dt = typeof d === "string" ? new Date(d.replace(" ", "T") + "Z") : d;
+  return dt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
+};
+
 export function AdminPage() {
   const auth = trpc.admin.check.useQuery();
   const [password, setPassword] = useState("");
@@ -155,8 +162,7 @@ function AdminDashboard() {
             {(runs.data ?? []).map((r: any) => (
               <tr key={r.id} className="border-b border-border/50">
                 <td className="p-3 font-medium">{r.supplier}</td>
-                <td className="p-3 whitespace-nowrap">{r.startedAt ? new Date(r.startedAt).toLocaleString("ru-RU") : ""}</td>
-                <td className="p-3">
+                <td className="p-3 whitespace-nowrap">{fmtMsk(r.startedAt)}</td>                <td className="p-3">
                   <span className={r.status === "ok" ? "text-emerald-700" : r.status === "error" ? "text-destructive" : "text-amber-700"}>
                     {r.status === "ok" ? "успешно" : r.status === "error" ? "ошибка" : "в работе"}
                   </span>
@@ -228,8 +234,7 @@ function AdminLeads({ rows, loading }: { rows: any[]; loading: boolean }) {
             <tbody>
               {rows.map((l) => (
                 <tr key={l.id} className="border-b border-border/50 align-top">
-                  <td className="p-3 whitespace-nowrap">{l.createdAt ? new Date(l.createdAt).toLocaleString("ru-RU") : ""}</td>
-                  <td className="p-3 whitespace-nowrap">{typeLabel(l.formType)}</td>
+                  <td className="p-3 whitespace-nowrap">{fmtMsk(l.createdAt)}</td>                  <td className="p-3 whitespace-nowrap">{typeLabel(l.formType)}</td>
                   <td className="p-3 font-medium">{l.name}</td>
                   <td className="p-3 whitespace-nowrap">
                     <a href={`tel:${l.phone.replace(/[^+\d]/g, "")}`} className="underline">{l.phone}</a>
