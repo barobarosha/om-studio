@@ -22,8 +22,8 @@ export const SITE = {
     hours: "Пн–Чт: 10:00–20:00 · Пт: 10:00–18:00 · Сб: 11:30–18:00 · Вс — выходной",
   },
   messengers: {
-    telegram: "https://t.me/omstudio_pro",
-    whatsapp: "https://wa.me/74999952617",
+    telegram: "https://t.me/omstudiofedorova",
+    whatsapp: "https://wa.me/79265065171",
     max: "https://max.ru/u/omstudio",
   },
   // ID счётчика Яндекс Метрики — подставляется при запуске
