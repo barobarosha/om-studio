@@ -104,9 +104,12 @@ export async function runImport(code: SourceCode): Promise<{ runId: number; stat
   const errors: string[] = [];
   try {
     const items = (await SOURCES[code].loader()).filter((it) => it.externalId && it.name);
-    // П. 2: у выгрузок без поля «производитель» (Тоскана) восстанавливаем бренд
-    // по первому слову названия — до всех фаз (бренды, коллекции, привязка).
-    for (const it of items) it.brandName = it.brandName ?? guessBrandFromName(it.name);
+    // П. 2: у выгрузок без поля «производитель» (Bomond подставляет «Плитка»)
+    // восстанавливаем бренд по первому слову названия — до всех фаз (бренды, коллекции, привязка).
+    for (const it of items) {
+      const isJunk = !it.brandName || it.brandName.trim().toLowerCase() === "плитка";
+      if (isJunk) it.brandName = guessBrandFromName(it.name) ?? it.brandName;
+    }
     stats.totalRows = items.length;
     const slugTag = code;
 
