@@ -71,6 +71,8 @@ export default function CatalogPage({ forceCategory, forceSale, forceSearch }: {
       inStockOnly: filters.inStockOnly || undefined,
       onSale: forceSale || filters.onSale || undefined,
       search,
+          priceMin: filters.priceMin,
+          priceMax: filters.priceMax,
       sort: filters.sort,
       page: filters.page,
       perPage: 24,

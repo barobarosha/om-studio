@@ -121,8 +121,3 @@
 /* Герой-карусель и кастомный курсор */
 .hero-zoom { animation: heroZoom 6s ease-out forwards; }
 @keyframes heroZoom { from { transform: scale(1.08); } to { transform: scale(1); } }
-.cursor-ring--active { width: 3.5rem; height: 3.5rem; margin: -0.6rem; background: rgba(196,185,154,.15); }
-@media (pointer: fine) and (min-width: 1024px) {
-  body { cursor: none; }
-  a, button, label, select, input, textarea { cursor: none; }
-}

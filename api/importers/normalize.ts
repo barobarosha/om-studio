@@ -119,6 +119,20 @@ export function normalizeCountry(s?: string): string | undefined {
 }
 
 export function guessCategory(opts: {
+    // Уверенные маркеры керамогранита прямо в названии:
+  // поставщики часто отдают крупноформатный керамогранит с типом «плитка».
+  const n0 = (opts.name ?? "").toLowerCase();
+  if (/керамогранит|керамическ(ий|ого) гранит|porcelain|xlight|coverlam|mirage/.test(n0)) return "keramogranit";
+  // Крупный формат (обе стороны ≥ 120 см) — почти всегда керамогранит,
+  // если в названии нет явного слова «плитка».
+  if (!/плитка/.test(n0)) {
+    const big = n0.match(/(\d+(?:[.,]\d+)?)\s*[xх×*]\s*(\d+(?:[.,]\d+)?)/);
+    if (big) {
+      const a0 = parseFloat(big[1].replace(",", "."));
+      const b0 = parseFloat(big[2].replace(",", "."));
+      if (a0 >= 120 && b0 >= 120) return "keramogranit";
+    }
+  }
   material?: string;
   type?: string;
   name?: string;

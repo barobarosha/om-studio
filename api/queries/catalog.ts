@@ -88,11 +88,11 @@ export async function listProducts(input: CatalogFilters) {
   const page = Math.max(1, f.page ?? 1);
   const perPage = Math.min(60, Math.max(6, f.perPage ?? 24));
   const conds = buildWhere(f);
-  const orderBy =
+    const orderBy =
     f.sort === "price_asc"
-      ? [asc(products.price)]
+      ? [sql`${products.price} IS NULL`, asc(products.price)]
       : f.sort === "price_desc"
-        ? [desc(products.price)]
+        ? [sql`${products.price} IS NULL`, desc(products.price)]
         : f.sort === "newest"
           ? [desc(products.createdAt)]
           : f.sort === "stock"
